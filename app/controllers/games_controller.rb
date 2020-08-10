@@ -1,37 +1,30 @@
-require 'open-uri'
-require 'json'
+require "open-uri"
 
 class GamesController < ApplicationController
+  VOWELS = %w(A E I O U Y)
+
   def new
-    @letters = []
-    10.times { @letters << ('A'...'Z').to_a.sample }
-    @letters
-  end
-
-  def english_word
-    url = "https://wagon-dictionary.herokuapp.com/#{@answer}"
-    word_dictionary = open(url).read
-    word = JSON.parse(word_dictionary)
-    word['found']
-  end
-
-  # The methods true if the block nevers false or nil
-  def letter_in_grid
-    @answer.chars.sort.all? { |letter| @grid.include?(letter) }
+    @letters = Array.new(5) { VOWELS.sample }
+    @letters += Array.new(5) { (('A'..'Z').to_a - VOWELS).sample }
+    @letters.shuffle!
   end
 
   def score
-    @grid = params[:grid]
-    @answer = params[:word]
-    grid_letters = @grid.each_char { |letter| print letter, '' }
-    if !letter_in_grid
-      @result = "Sorry, but #{@answer.upcase} can’t be built out of #{grid_letters}."
-    elsif !english_word
-      @result = "Sorry but #{@answer.upcase} does not seem to be an English word."
-    elsif letter_in_grid && !english_word
-      @result = "Sorry but #{@answer.upcase} does not seem to be an English word."
-    else letter_in_grid && !english_word
-      @result = "Congratulation! #{@answer.upcase} is a valid English word."
-    end
+    @letters = params[:letters].split
+    @word = (params[:word] || "").upcase
+    @included = included?(@word, @letters)
+    @english_word = english_word?(@word)
+  end
+
+  private
+
+  def included?(word, letters)
+    word.chars.all? { |letter| word.count(letter) <= letters.count(letter) }
+  end
+
+  def english_word?(word)
+    response = open("https://wagon-dictionary.herokuapp.com/#{word}")
+    json = JSON.parse(response.read)
+    json['found']
   end
 end
